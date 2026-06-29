@@ -4,6 +4,9 @@ window.CHARACTERS = [
     name: "아베베",
     job: "에티오피아의 농부",
     emoji: "👨‍🌾",
+    badgeBg: "bg-amber-100",
+    textColor: "text-amber-900",
+    themeColor: "amber",
     initialState: { health: 100, capital: 100 },
     stages: [
       {
@@ -73,6 +76,9 @@ window.CHARACTERS = [
     name: "파티마",
     job: "방글라데시의 14세 소녀",
     emoji: "👧🏽",
+    badgeBg: "bg-blue-100",
+    textColor: "text-blue-900",
+    themeColor: "blue",
     initialState: { health: 100, capital: 80 },
     stages: [
       {
@@ -142,6 +148,9 @@ window.CHARACTERS = [
     name: "타네",
     job: "투발루의 청년 어부",
     emoji: "🛶",
+    badgeBg: "bg-cyan-100",
+    textColor: "text-cyan-900",
+    themeColor: "cyan",
     initialState: { health: 100, capital: 90 },
     stages: [
       {
