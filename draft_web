@@ -1,0 +1,33 @@
+# Climate Escape (지구촌 방 탈출) - 초안 개발 완료!
+
+안녕하세요! 기후 불평등을 알리는 인터랙티브 스토리텔링 웹 게임 **'Climate Escape'**의 초안이 성공적으로 제작되었습니다. 
+
+개발된 코드는 Node.js 설치 없이 브라우저에서 직접 동작하는 **ESM(ECMAScript Modules) 기반 React + Tailwind CSS** 구조로 구현되어 초안 수정과 즉각적인 배포 확인이 매우 용이합니다.
+
+---
+
+## 📂 생성된 파일 구성
+1. **[index.html](file:///c:/Users/syj00/Myfolder/2026%20biz%20homework/koica_climae_escapedraft/index.html)**
+   - 앱의 메인 엔트리 포인트입니다. Tailwind CSS v3 플레이 CDN 및 React 모듈을 브라우저에 임포트합니다.
+2. **[gameData.js](file:///c:/Users/syj00/Myfolder/2026%20biz%20homework/koica_climae_escapedraft/gameData.js)**
+   - 에티오피아 농부 '아베베'(가뭄 테마)와 투발루 어부 '타네'(해수면 상승 테마)의 캐릭터 설명, 각 3단계 시나리오, 선택지별 생존력(❤️) 및 자산(💰) 증감 데이터를 분리하여 관리하는 데이터 파일입니다.
+3. **[app.js](file:///c:/Users/syj00/Myfolder/2026%20biz%20homework/koica_climae_escapedraft/app.js)**
+   - 게임 루프 상태 관리, 실시간 게이지 HUD, 상황별 수려한 인라인 SVG 일러스트, 탄소 배출 인포그래픽 바 차트, KOICA ODA 사업 소개 카드, 기후 행동 디지털 서약서 발급 로직이 담긴 React SPA 메인 스크립트입니다.
+4. **[style.css](file:///c:/Users/syj00/Myfolder/2026%20biz%20homework/koica_climae_escapedraft/style.css)**
+   - 프리미엄 글래스모피즘(Glassmorphism) 효과, 가뭄용 아지랑이 애니메이션, 해수면용 물살 출렁임 애니메이션, 차트 게이지 모션, 디지털 도장 날인 팝 효과 등을 지정한 커스텀 스타일시트입니다.
+
+---
+
+## 🚀 로컬 서버 실행 및 접속 방법
+현재 Python의 `uv` 환경을 기반으로 백그라운드에서 로컬 웹 서버가 실행되고 있습니다.
+
+1. **브라우저를 열고 아래 주소로 접속해 보세요!**
+   - 🔗 [http://localhost:8000](http://localhost:8000)
+
+2. **수동으로 서버를 다시 열고 싶다면:**
+   - 프로젝트 디렉토리(`koica_climae_escapedraft`)에서 아래 명령어를 실행하면 됩니다.
+   ```powershell
+   uv run python -m http.server 8000
+   ```
+
+찬찬히 플레이해 보시면서 수정하고 싶은 부분(스토리 문구, 수치 밸런싱, 디자인 색상 등)을 말씀해 주시면 바로 고도화해 나가겠습니다! 😊

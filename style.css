@@ -1,0 +1,184 @@
+/* 기후 난민의 지구촌 방탈출 - 커스텀 스타일 및 프리미엄 비주얼 에셋 */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+:root {
+  --font-display: 'Outfit', 'Noto Sans KR', sans-serif;
+  --backdrop-blur: 12px;
+}
+
+body {
+  font-family: var(--font-display);
+  background-color: #f1f5f9;
+  color: #0f172a;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* 글래스모피즘 스타일 */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.glass-button {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #1e293b;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.glass-button:active {
+  transform: translateY(0);
+}
+
+/* 게이지 바 커스텀 애니메이션 */
+.gauge-fill {
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 가뭄 테마 배경 연출 (지렁이 아지랑이) */
+.heat-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(transparent, rgba(180, 83, 9, 0.08) 50%, transparent);
+  animation: shimmer 8s infinite alternate ease-in-out;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  0% { transform: translateY(-5%) scaleY(0.95); opacity: 0.3; }
+  100% { transform: translateY(5%) scaleY(1.05); opacity: 0.8; }
+}
+
+/* 해수면 테마 배경 연출 (출렁이는 물살) */
+.ocean-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 120%, rgba(6, 182, 212, 0.1) 0%, transparent 60%);
+  animation: oceanWaves 10s infinite alternate ease-in-out;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes oceanWaves {
+  0% { transform: scale(1) rotate(0deg); opacity: 0.4; }
+  100% { transform: scale(1.1) rotate(3deg); opacity: 0.8; }
+}
+
+/* 파티클 효과 */
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: floatUp 6s infinite linear;
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(110vh) translateX(0) scale(0.5); opacity: 0; }
+  20% { opacity: 0.4; }
+  80% { opacity: 0.4; }
+  100% { transform: translateY(-10vh) translateX(50px) scale(1.2); opacity: 0; }
+}
+
+/* 서약서 서명 도장 흔들림 애니메이션 */
+.stamp-enter {
+  animation: stampPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes stampPop {
+  0% { transform: scale(3) rotate(-30deg); opacity: 0; filter: blur(4px); }
+  70% { transform: scale(0.95) rotate(-12deg); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1) rotate(-15deg); }
+}
+
+/* 네온 테두리 효과 */
+.neon-border-amber {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2), inset 0 0 15px rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.neon-border-cyan {
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2), inset 0 0 15px rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+/* 페이지 페이드인 효과 */
+.fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 기후 변화 불평등 비교 차트 애니메이션 */
+.chart-bar {
+  transform-origin: bottom;
+  animation: growUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes growUp {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* 스크롤바 세팅 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 음악 플레이 이퀄라이저 애니메이션 */
+@keyframes music-bar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1.2); }
+}
+.animate-music-bar {
+  animation: music-bar 1s ease-in-out infinite;
+  transform-origin: bottom;
+}

@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Climate Escape: 지구촌 방 탈출 | 기후 불평등과 난민 스토리텔링</title>
+  <meta name="description" content="기후 난민의 가혹한 선택을 체험하고 선진국과 개도국의 탄소 불평등을 이해하는 인터랙티브 스토리텔링 웹 게임 'Climate Escape'">
+  
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'Noto Sans KR', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              charcoal: '#f8fafc',
+              slate: '#f1f5f9',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom CSS Stylesheet -->
+  <link rel="stylesheet" href="./style.css">
+  
+  <!-- High-reliability JSDelivr CDNs for React, ReactDOM and Babel Standalone -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
+
+  <!-- Load Global Game Data (defines window.CHARACTERS) -->
+  <script src="./gameData.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- Debug Error Monitor Overlay -->
+  <div id="error-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255, 255, 255, 0.95); color:#ef4444; padding:30px; font-family:monospace; z-index:99999; overflow:auto; border: 4px solid #ef4444;">
+    <h2 style="color:#ef4444; font-size: 24px; margin-bottom: 10px; font-weight: bold;">⚠️ 브라우저 런타임 에러 감지 (Debug Monitor)</h2>
+    <p style="color:#475569; margin-bottom: 20px; font-size: 14px;">스크립트 컴파일 또는 실행 단계에서 에러가 발생했습니다. 아래 에러 로그를 확인해 주세요:</p>
+    <pre id="error-text" style="white-space:pre-wrap; background:rgba(241,245,249,1); padding:20px; border-radius:10px; border:1px solid rgba(15,23,42,0.1); color:#b91c1c; font-size: 13px; line-height: 1.6;"></pre>
+  </div>
+
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error("Global Error Caught:", e);
+      var overlay = document.getElementById('error-overlay');
+      var text = document.getElementById('error-text');
+      if (overlay && text) {
+        overlay.style.display = 'block';
+        text.innerText += '\n[' + new Date().toLocaleTimeString() + '] ' + e.message + '\n파일: ' + e.filename + '\n라인: ' + e.lineno + ':' + e.colno + '\n' + (e.error ? e.error.stack : '') + '\n---------------------------------------\n';
+      }
+    });
+    
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error("Unhandled Rejection:", e.reason);
+      var overlay = document.getElementById('error-overlay');
+      var text = document.getElementById('error-text');
+      if (overlay && text) {
+        overlay.style.display = 'block';
+        text.innerText += '\n[' + new Date().toLocaleTimeString() + '] Unhandled Rejection: ' + (e.reason ? (e.reason.message || e.reason.stack || e.reason) : 'Unknown') + '\n---------------------------------------\n';
+      }
+    });
+  </script>
+  
+  <!-- SPA Mount Point -->
+  <div id="root" class="flex-grow flex flex-col"></div>
+
+  <!-- Inline Babel Script containing React Application -->
+  <script type="text/babel">
+    (function() {
+      const { useState, useEffect, useRef } = React;
+      const { createRoot } = ReactDOM;
+
+      if (!window.CHARACTERS) {
+        throw new Error("gameData.js 파일이 올바르게 로드되지 않았거나 window.CHARACTERS 객체가 정의되지 않았습니다.");
+      }
+
+      const CHARACTERS = window.CHARACTERS;
+
+      // Helper function to map dynamic SVG types based on character ID and stage number
+      function getSvgType(charId, stageNum) {
+        if (charId === 'abebe') {
+          if (stageNum === 1 || stageNum === 3) return 'dryWell';
+          if (stageNum === 2 || stageNum === 4) return 'dyingCrops';
+          if (stageNum === 5 || stageNum === 6) return 'migrationRoad';
+        }
+        if (charId === 'fatima') {
+          if (stageNum === 1 || stageNum === 4) return 'kingTide';
+          if (stageNum === 2 || stageNum === 5) return 'cycloneSurge';
+          if (stageNum === 3 || stageNum === 6) return 'sinkingIslands';
+        }
+        if (charId === 'tane') {
+          if (stageNum === 1 || stageNum === 2) return 'kingTide';
+          if (stageNum === 3 || stageNum === 4) return 'cycloneSurge';
+          if (stageNum === 5 || stageNum === 6) return 'sinkingIslands';
+        }
+        return 'cover';
+      }
+
+      // --- inline SVG Illustrations Component ---
+      function StageIllustration({ type, theme }) {
+        const isDrought = theme.key === 'drought';
+        
+        if (type === 'cover') {
+          return (
+            <svg viewBox="0 0 800 400" className="w-full h-full rounded-2xl shadow-2xl">
+              <defs>
+                <linearGradient id="cover-left" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ffedd5" />
+                  <stop offset="100%" stopColor="#ffedd5" stopOpacity="0.4" />
+                </linearGradient>
+                <linearGradient id="cover-right" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ccfbf1" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#e0f2fe" />
+                </linearGradient>
+                <linearGradient id="sun-glow" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              
+              <rect x="0" y="0" width="400" height="400" fill="url(#cover-left)" />
+              <rect x="400" y="0" width="400" height="400" fill="url(#cover-right)" />
+              
+              <circle cx="200" cy="150" r="70" fill="url(#sun-glow)" opacity="0.6" />
+              <circle cx="200" cy="150" r="50" fill="#f59e0b" />
+              
+              <path d="M 0,350 L 80,330 L 150,360 L 220,335 L 300,365 L 400,340 L 400,400 L 0,400 Z" fill="#d97706" opacity="0.3" />
+              <path d="M 50,340 L 60,370 M 120,350 L 110,390 M 180,345 L 200,380 M 270,355 L 250,395" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
+              
+              <path d="M 280,350 Q 270,280 260,220 Q 255,200 230,190 M 260,220 Q 280,180 300,170 M 255,250 Q 230,230 220,200" stroke="#7c2d12" strokeWidth="6" strokeLinecap="round" fill="none" />
+              
+              <path d="M 400,340 Q 480,310 560,340 T 720,320 T 800,350 L 800,400 L 400,400 Z" fill="#0891b2" opacity="0.4" />
+              <path d="M 400,360 Q 460,340 520,360 T 680,335 T 800,370 L 800,400 L 400,400 Z" fill="#0284c7" opacity="0.5" />
+              <path d="M 400,380 Q 490,360 580,380 T 740,365 T 800,390 L 800,400 L 400,400 Z" fill="#0369a1" opacity="0.3" />
+              
+              <path d="M 680,340 Q 690,280 670,230" stroke="#0f172a" strokeWidth="7" strokeLinecap="round" fill="none" />
+              <path d="M 670,230 Q 630,230 620,250 M 670,230 Q 650,200 640,190 M 670,230 Q 700,200 710,210 M 670,230 Q 710,240 720,260" stroke="#047857" strokeWidth="4" strokeLinecap="round" fill="none" />
+              
+              <line x1="400" y1="0" x2="400" y2="400" stroke="#94a3b8" strokeWidth="2" strokeDasharray="5,5" opacity="0.5" />
+              
+              <circle cx="400" cy="200" r="45" fill="#ffffff" stroke="#f59e0b" strokeWidth="3" />
+              <path d="M 390,185 L 415,200 L 390,215 Z" fill="#0f172a" />
+              <path d="M 395,200 L 385,200" stroke="#0f172a" strokeWidth="2" />
+              <path d="M 400,175 A 25 25 0 0 1 425 200 A 25 25 0 0 1 400 225" stroke="#0284c7" strokeWidth="2" fill="none" strokeDasharray="6,4" />
+            </svg>
+          );
+        }
+
+        if (isDrought) {
+          if (type === 'dryWell') {
+            return (
+              <svg viewBox="0 0 400 240" className="w-full h-full rounded-xl">
+                <defs>
+                  <radialGradient id="sun-drought" cx="50%" cy="0%" r="90%">
+                    <stop offset="0%" stopColor="#fef3c7" />
+                    <stop offset="100%" stopColor="#fffbeb" />
+                  </radialGradient>
+                </defs>
+                <rect width="400" height="240" fill="url(#sun-drought)" />
+                
+                <path d="M 0,160 L 400,160 L 400,240 L 0,240 Z" fill="#fed7aa" />
+                <path d="M 50,160 L 70,200 L 120,210 M 70,200 L 40,230 M 150,170 L 160,200 L 220,220 M 160,200 L 180,240 M 290,165 L 280,195 L 340,210 M 280,195 L 250,235" stroke="#ea580c" strokeWidth="1.5" fill="none" opacity="0.7" />
+                
+                <rect x="170" y="110" width="60" height="50" rx="3" fill="#b45309" stroke="#7c2d12" strokeWidth="2" />
+                <line x1="180" y1="110" x2="180" y2="70" stroke="#7c2d12" strokeWidth="4" />
+                <line x1="220" y1="110" x2="220" y2="70" stroke="#7c2d12" strokeWidth="4" />
+                <line x1="175" y1="70" x2="225" y2="70" stroke="#7c2d12" strokeWidth="4" />
+                <circle cx="200" cy="70" r="6" fill="#451a03" />
+                
+                <path d="M 200,76 L 200,120 Q 205,123 210,122" stroke="#ea580c" strokeWidth="2" fill="none" />
+                <rect x="205" y="122" width="22" height="18" rx="2" fill="#7c2d12" transform="rotate(25, 205, 122)" />
+                <path d="M 203,127 Q 212,118 221,126" stroke="#ea580c" strokeWidth="2" fill="none" />
+                
+                <circle cx="200" cy="-20" r="60" fill="#f59e0b" opacity="0.6" />
+                <circle cx="200" cy="-20" r="40" fill="#fff" />
+              </svg>
+            );
+          }
+          if (type === 'dyingCrops') {
+            return (
+              <svg viewBox="0 0 400 240" className="w-full h-full rounded-xl">
+                <rect width="400" height="240" fill="#fef9c3" />
+                <rect width="400" height="240" fill="rgba(245, 158, 11, 0.1)" />
+                
+                <path d="M 0,180 L 400,180 L 400,240 L 0,240 Z" fill="#ffedd5" />
+                
+                <path d="M 80,180 Q 75,120 60,90 Q 55,80 40,85" stroke="#b45309" strokeWidth="4" fill="none" />
+                <path d="M 75,140 Q 50,130 45,140" stroke="#d97706" strokeWidth="2" fill="none" />
+                <path d="M 70,110 Q 95,100 100,110" stroke="#b45309" strokeWidth="2" fill="none" />
+                
+                <path d="M 200,180 Q 210,110 230,80 Q 235,70 250,75" stroke="#7c2d12" strokeWidth="5" fill="none" />
+                <path d="M 205,130 Q 235,120 240,130" stroke="#b45309" strokeWidth="2" fill="none" />
+                <path d="M 202,155 Q 180,145 175,155" stroke="#d97706" strokeWidth="2" fill="none" />
+                
+                <path d="M 310,180 Q 300,130 285,100" stroke="#d97706" strokeWidth="4" fill="none" />
+                
+                <path d="M 130,200 C 130,195 140,190 150,190 C 160,190 170,195 170,200 L 165,215 L 135,215 Z" fill="#b45309" opacity="0.6" />
+                <circle cx="143" cy="202" r="3" fill="#fff" />
+                <circle cx="157" cy="202" r="3" fill="#fff" />
+                <path d="M 148,212 L 152,212" stroke="#fff" strokeWidth="2" />
+              </svg>
+            );
+          }
+          if (type === 'migrationRoad') {
+            return (
+              <svg viewBox="0 0 400 240" className="w-full h-full rounded-xl">
+                <defs>
+                  <linearGradient id="dusty-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#fed7aa" />
+                    <stop offset="60%" stopColor="#fef3c7" />
+                    <stop offset="100%" stopColor="#ffedd5" />
+                  </linearGradient>
+                </defs>
+                <rect width="400" height="240" fill="url(#dusty-sky)" />
+                
+                <path d="M 300,140 L 300,100 L 315,100 L 315,120 L 330,120 L 330,85 L 345,85 L 345,130 L 360,130 L 360,110 L 375,110 L 375,140 Z" fill="#ea580c" opacity="0.3" />
+                
+                <path d="M 150,140 L 170,140 L 280,240 L 40,240 Z" fill="#d97706" opacity="0.7" />
+                <line x1="160" y1="140" x2="160" y2="240" stroke="#fff" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
+                
+                <circle cx="110" cy="175" r="7" fill="#451a03" />
+                <path d="M 110,182 L 105,215 M 110,182 L 115,215 M 110,182 Q 102,195 100,205" stroke="#451a03" strokeWidth="4" strokeLinecap="round" />
+                <circle cx="100" cy="170" r="9" fill="#7c2d12" />
+                
+                <circle cx="125" cy="180" r="6" fill="#451a03" />
+                <path d="M 125,186 L 122,215 M 125,186 L 129,215" stroke="#451a03" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M 128,187 Q 135,192 131,198" stroke="#451a03" strokeWidth="3" strokeLinecap="round" fill="none" />
+                
+                <circle cx="138" cy="195" r="5" fill="#451a03" />
+                <path d="M 138,200 L 136,220 M 138,200 L 141,220" stroke="#451a03" strokeWidth="2.5" />
+                
+                <circle cx="160" cy="90" r="25" fill="#f59e0b" opacity="0.4" />
+              </svg>
+            );
+          }
+        } 
+        
+        else {
+          if (type === 'kingTide') {
+            return (
+              <svg viewBox="0 0 400 240" className="w-full h-full rounded-xl">
+                <defs>
+                  <linearGradient id="sky-tide" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#e0f2fe" />
+                    <stop offset="100%" stopColor="#f8fafc" />
+                  </linearGradient>
+                </defs>
+                <rect width="400" height="240" fill="url(#sky-tide)" />
+                
+                <path d="M 60,180 Q 70,120 50,80" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.5" />
+                
+                <path d="M 0,160 L 400,160 L 400,240 L 0,240 Z" fill="#cbd5e1" />
+                
+                <line x1="0" y1="180" x2="400" y2="180" stroke="#94a3b8" strokeWidth="2" />
+                <line x1="0" y1="205" x2="400" y2="205" stroke="#94a3b8" strokeWidth="2" />
+                <line x1="0" y1="225" x2="400" y2="225" stroke="#94a3b8" strokeWidth="2" />
+                
+                <path d="M 0,175 Q 80,165 160,180 T 320,170 T 400,185 L 400,240 L 0,240 Z" fill="#06b6d4" opacity="0.5" />
+                <path d="M 0,195 Q 90,190 180,205 T 340,195 T 400,210 L 400,240 L 0,240 Z" fill="#22d3ee" opacity="0.3" />
+                
+                <rect x="280" y="150" width="30" height="35" fill="#64748b" rx="2" />
+                <path d="M 285,150 Q 260,120 275,110 Q 285,120 290,150" fill="#0d9488" opacity="0.7" />
+                <path d="M 305,150 Q 330,125 315,115 Q 305,125 300,150" fill="#0f766e" opacity="0.8" />
+                <circle cx="295" cy="185" r="4" fill="#22d3ee" opacity="0.6" />
+              </svg>
+            );
+          }
+          if (type === 'cycloneSurge') {
+            return (
+              <svg viewBox="0 0 400 240" className="w-full h-full rounded-xl">
+                <defs>
+                  <linearGradient id="storm-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#cbd5e1" />
+                    <stop offset="100%" stopColor="#94a3b8" />
+                  </linearGradient>
+                </defs>
+                <rect width="400" height="240" fill="url(#storm-sky)" />
+                
+                <line x1="50" y1="0" x2="20" y2="240" stroke="#38bdf8" strokeWidth="1.5" opacity="0.5" />
+                <line x1="150" y1="0" x2="120" y2="240" stroke="#38bdf8" strokeWidth="1.5" opacity="0.5" />
+                <line x1="250" y1="0" x2="220" y2="240" stroke="#38bdf8" strokeWidth="1.5" opacity="0.5" />
+                <line x1="350" y1="0" x2="320" y2="240" stroke="#38bdf8" strokeWidth="1.5" opacity="0.5" />
+                
+                <path d="M 250,0 L 220,80 L 240,80 L 200,140" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                
+                <g transform="translate(180, 110) rotate(-22)">
+                  <path d="M 0,20 L 50,20 L 40,38 L 10,38 Z" fill="#475569" stroke="#1e293b" strokeWidth="2" />
+                  <line x1="25" y1="20" x2="25" y2="-10" stroke="#1e293b" strokeWidth="2" />
+                  <path d="M 25,-10 L 45,5 L 25,5 Z" fill="#0284c7" />
+                </g>
+                
+                <path d="M 0,160 Q 100,100 200,170 T 400,150 L 400,240 L 0,240 Z" fill="#0891b2" opacity="0.5" />
+                <path d="M 0,185 Q 120,150 240,195 T 400,175 L 400,240 L 0,240 Z" fill="#0284c7" opacity="0.6" />
+                <path d="M 0,210 Q 80,180 180,215 T 400,200 L 400,240 L 0,240 Z" fill="#38bdf8" opacity="0.4" />
+              </svg>
+            );
+          }
+          if (type === 'sinkingIslands') {
+            return (
+              <svg viewBox="0 0 400 240" className="w-full h-full rounded-xl">
+                <defs>
+                  <radialGradient id="twilight" cx="50%" cy="50%" r="70%">
+                    <stop offset="0%" stopColor="#e0f2fe" />
+                    <stop offset="100%" stopColor="#bae6fd" />
+                  </radialGradient>
+                </defs>
+                <rect width="400" height="240" fill="url(#twilight)" />
+                
+                <ellipse cx="200" cy="180" rx="90" ry="25" fill="#eab308" opacity="0.6" />
+                
+                <path d="M 180,170 Q 150,110 110,95" stroke="#7c2d12" strokeWidth="6" strokeLinecap="round" fill="none" />
+                <path d="M 110,95 Q 80,105 70,130" stroke="#047857" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+                <path d="M 110,95 Q 90,80 85,60" stroke="#059669" strokeWidth="3" strokeLinecap="round" fill="none" />
+                <path d="M 110,95 Q 130,85 140,65" stroke="#10b981" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+                <path d="M 110,95 Q 130,110 145,130" stroke="#047857" strokeWidth="3" strokeLinecap="round" fill="none" />
+                
+                <path d="M 0,170 Q 100,160 200,175 T 400,165 L 400,240 L 0,240 Z" fill="#0284c7" opacity="0.6" />
+                <path d="M 0,185 Q 120,180 240,195 T 400,180 L 400,240 L 0,240 Z" fill="#0369a1" opacity="0.5" />
+                
+                <g transform="translate(260, 150) rotate(-10)">
+                  <line x1="10" y1="40" x2="10" y2="0" stroke="#7c2d12" strokeWidth="3" />
+                  <rect x="0" y="0" width="20" height="12" fill="#b45309" rx="1" />
+                  <line x1="3" y1="6" x2="17" y2="6" stroke="#7c2d12" strokeWidth="1" />
+                </g>
+                
+                <ellipse cx="200" cy="185" rx="50" ry="12" fill="none" stroke="#e0f2fe" strokeWidth="1.5" opacity="0.7" />
+                <ellipse cx="200" cy="190" rx="75" ry="18" fill="none" stroke="#e0f2fe" strokeWidth="1" opacity="0.5" />
+              </svg>
+            );
+          }
+        }
+
+        return (
+          <div className={`w-full h-full ${theme.illustrationBg} flex items-center justify-center rounded-xl p-4`}>
+            <span className={`${theme.accent} font-bold`}>{type} Illustration</span>
+          </div>
+        );
+      }
+
+      // --- Main App Component ---
+      function App() {
+        const [screen, setScreen] = useState('welcome'); // welcome, charSelect, play, result
+        const [selectedChar, setSelectedChar] = useState(null); // abebe, fatima, tane
+        const [currentStageIndex, setCurrentStageIndex] = useState(0);
+        const [stats, setStats] = useState({ health: 80, capital: 100 });
+        const [history, setHistory] = useState([]);
+        const [feedback, setFeedback] = useState({ show: false, choiceText: '', resultText: '', effects: null });
+        const [pledges, setPledges] = useState([]);
+        const [userName, setUserName] = useState('');
+        const [showCertificate, setShowCertificate] = useState(false);
+        const [particles, setParticles] = useState([]);
+        
+        const audioRef = useRef(null);
+        const [isPlaying, setIsPlaying] = useState(false);
+
+        const [emailInput, setEmailInput] = useState('');
+        const [emailSending, setEmailSending] = useState(false);
+        const [emailSent, setEmailSent] = useState(false);
+        const [submittedEmail, setSubmittedEmail] = useState('');
+
+        const handleEmailSubmit = (e) => {
+          e.preventDefault();
+          if (!emailInput.trim()) return;
+          setEmailSending(true);
+          setTimeout(() => {
+            setEmailSending(false);
+            setEmailSent(true);
+            setSubmittedEmail(emailInput);
+          }, 1500);
+        };
+
+        const handleShare = (platform) => {
+          let currentUrl = 'https://climate-escape.com';
+          if (window.location.protocol.startsWith('http')) {
+            currentUrl = window.location.origin + window.location.pathname;
+          } else {
+            currentUrl = '[웹사이트 배포 후 실제 인터넷 주소(URL)로 자동 연동됩니다]';
+          }
+          const shareText = `[Climate Escape: 지구촌 방 탈출] 기후 불평등을 해결하기 위해 기후 행동 약속에 서명했습니다! 여러분도 난민들의 삶을 직접 체험하고 기후 정의 서약에 동참해 보세요! 🌍\n👉 게임 플레이하기: ${currentUrl}`;
+
+          if (platform === 'X(구 트위터)') {
+            // Real X (Twitter) Web Intent sharing
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+            window.open(twitterUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
+          } else if (platform === '인스타그램') {
+            // Instagram copy description
+            navigator.clipboard.writeText(shareText).then(() => {
+              alert(`📸 인스타그램 공유용 텍스트와 링크가 복사되었습니다!\n\n피드/스토리에 게시하거나 프로필 링크에 넣어 친구들에게 기후 행동을 소문내 보세요!\n\n복사된 내용:\n"${shareText}"`);
+            }).catch(err => {
+              console.error("복사 실패:", err);
+            });
+          } else if (platform === '카카오톡') {
+            // KakaoTalk copy description
+            navigator.clipboard.writeText(shareText).then(() => {
+              alert(`💬 카카오톡 공유용 텍스트와 링크가 복사되었습니다!\n\n단톡방이나 친구에게 대화창에 붙여넣기(Ctrl+V) 하여 공유해 보세요!\n\n복사된 내용:\n"${shareText}"`);
+            }).catch(err => {
+              console.error("복사 실패:", err);
+            });
+          }
+        };
+
+        const handleUndo = () => {
+          if (history.length === 0) return;
+          const lastState = history[history.length - 1];
+          setCurrentStageIndex(lastState.stageIndex);
+          setStats({ health: lastState.health, capital: lastState.capital });
+          setHistory(prev => prev.slice(0, -1));
+        };
+
+        const toggleAudio = () => {
+          if (!audioRef.current) return;
+          if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+          } else {
+            audioRef.current.play().then(() => {
+              setIsPlaying(true);
+            }).catch(err => console.log("Audio playback blocked:", err));
+          }
+        };
+
+        // Generate background floating particles
+        useEffect(() => {
+          const isWelcome = screen === 'welcome';
+          const isCharSelect = screen === 'charSelect';
+          
+          let colorType = 'amber';
+          if (selectedChar === 'tane') colorType = 'cyan';
+          else if (selectedChar === 'fatima') colorType = 'emerald';
+          else if (selectedChar === 'abebe') colorType = 'amber';
+          else if (isWelcome || isCharSelect) colorType = 'emerald';
+
+          const pArray = Array.from({ length: 15 }).map((_, i) => ({
+            id: i,
+            left: `${Math.random() * 100}%`,
+            size: `${Math.random() * 6 + 4}px`,
+            delay: `${Math.random() * 5}s`,
+            duration: `${Math.random() * 6 + 6}s`,
+            color: colorType === 'cyan' ? 'rgba(6, 182, 212, 0.25)' : colorType === 'emerald' ? 'rgba(16, 185, 129, 0.25)' : colorType === 'amber' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(16, 185, 129, 0.2)'
+          }));
+          setParticles(pArray);
+        }, [screen, selectedChar]);
+
+        const handleStartGame = () => {
+          setScreen('charSelect');
+          if (audioRef.current && !isPlaying) {
+            audioRef.current.play().then(() => {
+              setIsPlaying(true);
+            }).catch(err => console.log("Audio play blocked by browser:", err));
+          }
+        };
+
+        const handleSelectChar = (charId) => {
+          const char = CHARACTERS.find(c => c.id === charId);
+          setSelectedChar(charId);
+          setStats({ 
+            health: char.initialState.health, 
+            capital: char.initialState.capital 
+          });
+          setCurrentStageIndex(0);
+          setHistory([]);
+          setScreen('play');
+        };
+
+        const handleChooseOption = (choice) => {
+          const nextHealth = Math.max(0, Math.min(100, stats.health + choice.effect.health));
+          const nextCapital = Math.max(0, Math.min(100, stats.capital + choice.effect.capital));
+
+          setFeedback({
+            show: true,
+            choiceText: choice.text,
+            resultText: choice.resultText,
+            effects: choice.effect,
+            nextStats: { health: nextHealth, capital: nextCapital }
+          });
+        };
+
+        const handleConfirmFeedback = () => {
+          const nextHealth = feedback.nextStats.health;
+          const nextCapital = feedback.nextStats.capital;
+
+          setHistory(prev => [
+            ...prev,
+            { stageIndex: currentStageIndex, health: stats.health, capital: stats.capital }
+          ]);
+
+          setStats({ health: nextHealth, capital: nextCapital });
+          setFeedback({ show: false, choiceText: '', resultText: '', effects: null });
+
+          if (nextHealth <= 0) {
+            setScreen('result');
+          } else if (currentStageIndex >= character.stages.length - 1) {
+            setScreen('result');
+          } else {
+            setCurrentStageIndex(prev => prev + 1);
+          }
+        };
+
+        const handleRestart = () => {
+          setScreen('welcome');
+          setSelectedChar(null);
+          setCurrentStageIndex(0);
+          setStats({ health: 80, capital: 100 });
+          setHistory([]);
+          setUserName('');
+          setPledges([]);
+          setShowCertificate(false);
+          setEmailInput('');
+          setEmailSent(false);
+          setSubmittedEmail('');
+        };
+
+        const handleTogglePledge = (item) => {
+          if (pledges.includes(item)) {
+            setPledges(prev => prev.filter(p => p !== item));
+          } else {
+            setPledges(prev => [...prev, item]);
+          }
+        };
+
+        const handleCompletePledge = (e) => {
+          e.preventDefault();
+          if (!userName.trim()) {
+            alert("서약서에 이름을 기재해주세요!");
+            return;
+          }
+          if (pledges.length === 0) {
+            alert("실천할 기후 행동을 최소 한 가지 선택해주세요!");
+            return;
+          }
+          setShowCertificate(true);
+        };
+
+        const character = selectedChar ? CHARACTERS.find(c => c.id === selectedChar) : null;
+        const stage = character ? character.stages[currentStageIndex] : null;
+        const isDrought = character?.themeConfig.key === 'drought';
+        const isGameOver = stats.health <= 0;
+        const isSuccess = stats.health > 0;
+
+        const pledgeOptions = [
+          "일회용 컵 대신 개인 텀블러 사용 일상화하기",
+          "가까운 거리는 도보나 자전거로 이동하고 대중교통 우선 이용하기",
+          "불필요한 디지털 메일함 비우기로 대기 전력 탄소 저감하기",
+          "실내 적정 온도 준수하기 (여름철 26도 이상, 겨울철 20도 이하)",
+          "기후 불평등과 코이카의 기후 ODA 원조 사업에 지속적인 관심 갖기"
+        ];
+
+        return (
+          <div className={`relative w-full min-h-screen flex flex-col justify-between overflow-hidden transition-all duration-700 ${
+            selectedChar && screen === 'play' ? `bg-gradient-to-b ${character.themeConfig.bgGradient}` : 'bg-slate-100'
+          }`}>
+            
+            {/* Background Audio */}
+            <audio 
+              ref={audioRef} 
+              src="https://upload.wikimedia.org/wikipedia/commons/8/82/Nocturne_in_E_flat_major%2C_Op._9_no._2.mp3" 
+              loop 
+            />
+
+            {/* Music Control Widget */}
+            <div className="fixed top-4 right-4 z-50">
+              <button 
+                onClick={toggleAudio}
+                className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-md flex items-center justify-center hover:scale-105 transition-all duration-300 group"
+                title="배경음악 켜기/끄기"
+              >
+                {isPlaying ? (
+                  <div className="flex items-end gap-0.5 justify-center h-5">
+                    <span className="w-1 h-3 bg-emerald-600 rounded animate-music-bar" style={{ animationDelay: '0.1s' }} />
+                    <span className="w-1 h-5 bg-emerald-600 rounded animate-music-bar" style={{ animationDelay: '0.3s' }} />
+                    <span className="w-1 h-2 bg-emerald-600 rounded animate-music-bar" style={{ animationDelay: '0.5s' }} />
+                  </div>
+                ) : (
+                  <span className="text-xl group-hover:rotate-12 transition-transform duration-300">🔇</span>
+                )}
+              </button>
+            </div>
+            
+            {/* Background Animated Particles */}
+            {particles.map(p => (
+              <span
+                key={p.id}
+                className="particle"
+                style={{
+                  left: p.left,
+                  width: p.size,
+                  height: p.size,
+                  backgroundColor: p.color,
+                  animationDelay: p.delay,
+                  animationDuration: p.duration,
+                  boxShadow: `0 0 8px ${p.color}`
+                }}
+              />
+            ))}
+
+            {/* Screen: WELCOME */}
+            {screen === 'welcome' && (
+              <div className="flex-grow flex flex-col items-center justify-center p-6 md:p-12 z-10 fade-in-up">
+                <div className="max-w-3xl w-full text-center space-y-8 glass-panel p-8 md:p-12 rounded-3xl relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
+                  
+                  <div className="space-y-4">
+                    <span className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-200">
+                      INTERACTIVE STORYTELLING WEB GAME
+                    </span>
+                    <h1 className="text-5xl md:text-7xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-600 via-emerald-700 to-cyan-600 drop-shadow-md py-1">
+                      Climate Escape
+                    </h1>
+                    <p className="text-xl md:text-2xl font-bold text-slate-700">
+                      지구촌 방 탈출 : 기후 불평등의 현실
+                    </p>
+                  </div>
+
+                  <div className="w-full max-w-lg mx-auto aspect-[2/1] rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
+                    <StageIllustration type="cover" theme={{ key: 'welcome' }} />
+                  </div>
+
+                  <p className="text-base md:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+                    기후 변화의 원인은 주로 선진국의 대량 탄소 배출에 있지만, 그로 인한 가장 파괴적인 재난은 기후 복원력이 취약한 아프리카와 태평양 도서국의 기후 난민들에게 닥치고 있습니다. 
+                    <br/><br/>
+                    직접 가뭄의 에티오피아 농부와 홍수의 방글라데시 소녀, 해수면 상승의 투발루 어부가 되어 이 비극적인 방 탈출 게임을 시작해 보세요.
+                  </p>
+
+                  <div className="pt-4">
+                    <button
+                      onClick={handleStartGame}
+                      className="px-12 py-4 bg-gradient-to-r from-amber-600 to-emerald-600 text-white font-extrabold text-lg rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-300 group"
+                    >
+                      지구촌 방 탈출 시작하기
+                      <span className="inline-block transition-transform duration-200 group-hover:translate-x-1 ml-2">➔</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Screen: CHARACTER SELECT */}
+            {screen === 'charSelect' && (
+              <div className="flex-grow flex flex-col items-center justify-center p-6 md:p-12 z-10 fade-in-up">
+                <div className="max-w-5xl w-full space-y-10">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
+                    <div className="space-y-1 text-left">
+                      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                        기후 난민 캐릭터 선택
+                      </h2>
+                      <p className="text-slate-600 text-sm">
+                        체험하고 싶은 기후 위기 지역의 인물을 선택해 생존 스토리를 이어가세요.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setScreen('welcome')}
+                      className="mt-4 sm:mt-0 px-6 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-extrabold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 justify-center"
+                    >
+                      <span>⬅</span> 메인 화면으로
+                    </button>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {CHARACTERS.map((char) => {
+                      const isEth = char.id === 'abebe';
+                      const isBan = char.id === 'fatima';
+                      return (
+                        <div 
+                          key={char.id}
+                          className={`group relative flex flex-col justify-between p-6 rounded-3xl glass-panel border transition-all duration-500 hover:scale-[1.02] ${
+                            isEth 
+                              ? 'hover:border-amber-400 hover:shadow-[0_10px_30px_rgba(245,158,11,0.1)]' 
+                              : isBan
+                                ? 'hover:border-emerald-400 hover:shadow-[0_10px_30px_rgba(16,185,129,0.1)]'
+                                : 'hover:border-cyan-400 hover:shadow-[0_10px_30px_rgba(6,182,212,0.1)]'
+                          }`}
+                        >
+                          <div className="space-y-6">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${char.themeConfig.badgeBg}`}>
+                                  {char.theme.split(" (")[0]}
+                                </span>
+                                <h3 className="text-2xl font-extrabold text-slate-900 mt-2">{char.name} {char.emoji}</h3>
+                              </div>
+                            </div>
+
+                            <div className={`w-full h-64 flex items-center justify-center rounded-2xl overflow-hidden relative border bg-white ${
+                              isEth ? 'border-amber-200' : isBan ? 'border-emerald-200' : 'border-cyan-200'
+                            }`}>
+                              <img 
+                                src={char.illustrationUrl} 
+                                alt={char.name} 
+                                className="max-w-full max-h-full object-contain transition-transform duration-500 ease-out group-hover:scale-112 group-hover:rotate-1"
+                              />
+                            </div>
+
+                            <div className={`text-sm italic p-4 rounded-xl leading-relaxed font-semibold text-slate-700 bg-slate-50 border border-slate-200/50`}>
+                              {char.job}
+                            </div>
+
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              {char.theme} 해결을 위한 ODA 연계 시나리오. 초기 자금 💰{char.initialState.capital}%, 체력 ❤️{char.initialState.health}%로 여정을 헤쳐 나갑니다.
+                            </p>
+                          </div>
+
+                          <div className="pt-6">
+                            <button
+                              onClick={() => handleSelectChar(char.id)}
+                              className={`w-full py-3.5 rounded-xl font-extrabold text-sm tracking-wide transition-all duration-300 ${char.themeConfig.buttonActive} shadow-md`}
+                            >
+                              {char.name}로 플레이 시작
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="text-center">
+                    <button 
+                      onClick={handleRestart}
+                      className="text-base text-slate-500 hover:text-slate-800 underline underline-offset-4"
+                    >
+                      메인 화면으로 돌아가기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Screen: PLAY */}
+            {screen === 'play' && character && stage && (
+              <div className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 z-10 fade-in-up">
+                
+                {isDrought ? <div className="heat-shimmer" /> : <div className="ocean-ripple" />}
+
+                <div className="max-w-4xl w-full space-y-6">
+                  
+                  {/* Play Navigation Bar */}
+                  <div className="flex justify-between items-center bg-white/60 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200/50 shadow-sm relative z-10">
+                    <button
+                      onClick={handleRestart}
+                      className="text-xs font-extrabold text-slate-500 hover:text-slate-800 flex items-center gap-1.5 transition-colors"
+                      title="진행 상황을 모두 초기화하고 첫 메인 페이지로 나갑니다."
+                    >
+                      <span>🏠</span> 메인 화면으로
+                    </button>
+                    
+                    {currentStageIndex > 0 && (
+                      <button
+                        onClick={handleUndo}
+                        className="text-xs font-extrabold text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5 transition-all bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-lg border border-emerald-200/60 shadow-sm"
+                        title="이전 단계 선택지로 복원하여 다시 선택합니다."
+                      >
+                        <span>↩</span> 이전 선택으로 되돌리기
+                      </button>
+                    )}
+                  </div>
+
+                  {/* HUD Panel */}
+                  <div className="glass-panel p-4 md:p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4 border border-slate-200/50 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-4 py-1 rounded-full text-xs font-bold ${character.themeConfig.badgeBg}`}>
+                        {character.emoji} {character.job.split("의 ")[0]}
+                      </span>
+                      <span className="text-xl font-extrabold text-slate-900">{character.name} ({character.job.split("의 ")[1]})</span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-6 w-full md:w-auto">
+                      {/* Survival (❤️) */}
+                      <div className="flex items-center gap-3 flex-grow md:w-48">
+                        <div className="flex items-center gap-1.5 min-w-[80px]">
+                          <span className={`text-xl ${stats.health <= 30 ? 'animate-bounce' : ''}`}>❤️</span>
+                          <span className="text-sm text-slate-600 font-bold">생존력</span>
+                        </div>
+                        <div className="h-5 bg-slate-200/80 rounded-full w-full overflow-hidden border border-slate-300 relative">
+                          <div 
+                            className={`h-full gauge-fill ${
+                              stats.health <= 30 
+                                ? 'bg-gradient-to-r from-red-600 to-rose-500 animate-pulse' 
+                                : 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                            }`}
+                            style={{ width: `${stats.health}%` }}
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-slate-900">
+                            {stats.health}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Wealth (💰) */}
+                      <div className="flex items-center gap-3 flex-grow md:w-48">
+                        <div className="flex items-center gap-1.5 min-w-[80px]">
+                          <span className="text-xl">💰</span>
+                          <span className="text-sm text-slate-600 font-bold">자산</span>
+                        </div>
+                        <div className="h-5 bg-slate-200/80 rounded-full w-full overflow-hidden border border-slate-300 relative">
+                          <div 
+                            className="h-full bg-gradient-to-r from-yellow-500 to-amber-500 gauge-fill"
+                            style={{ width: `${stats.capital}%` }}
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-slate-950">
+                            {stats.capital}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Main Content Layout */}
+                  <div className="grid md:grid-cols-5 gap-6 items-stretch relative z-10">
+                    
+                    {/* Story Column */}
+                    <div className="md:col-span-3 glass-panel p-6 md:p-8 rounded-3xl flex flex-col justify-between space-y-6">
+                      <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                        <span className={`text-base font-extrabold uppercase tracking-wider ${character.themeConfig.accent}`}>
+                          {stage.stageNum}단계: {character.theme.split(" (")[0]} 위기
+                        </span>
+                        <span className="text-sm text-slate-600 font-bold bg-slate-200 px-4 py-1.5 rounded-full border border-slate-300">
+                          STAGE {stage.stageNum} / {character.stages.length}
+                        </span>
+                      </div>
+
+                      <div className="w-full aspect-[16/10] rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white/50">
+                        <StageIllustration 
+                          type={getSvgType(character.id, stage.stageNum)} 
+                          theme={character.themeConfig} 
+                        />
+                      </div>
+
+                      <p className="text-base md:text-lg text-slate-800 leading-relaxed font-medium min-h-[70px]">
+                        {stage.situation}
+                      </p>
+                    </div>
+
+                    {/* Actions Column */}
+                    <div className="md:col-span-2 flex flex-col justify-between gap-4">
+                      <div className="glass-panel p-6 rounded-3xl space-y-4 flex-grow flex flex-col justify-center">
+                        <h4 className="text-sm font-extrabold text-slate-500 border-b border-slate-200 pb-2 text-center">
+                          현재 상태 분석 및 행동 대안
+                        </h4>
+                        <div className="space-y-3 text-sm text-slate-600 font-medium">
+                          <p className="flex justify-between">
+                            <span>가족 안전도:</span> 
+                            <span className={`font-bold ${stats.health <= 30 ? 'text-red-600' : 'text-slate-800'}`}>
+                              {stats.health <= 30 ? '치명적인 위험 상태' : '위기 경계 상태'}
+                            </span>
+                          </p>
+                          <p className="flex justify-between">
+                            <span>가용한 자금:</span> 
+                            <span className="font-bold text-amber-800">
+                              {stats.capital <= 20 ? '바닥 상태' : '임시 여력 보유'}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {stage.options.map((choice, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleChooseOption(choice)}
+                            className="w-full p-5 rounded-2xl text-left glass-button border transition-all duration-300 flex items-start gap-4 hover:border-slate-300 relative overflow-hidden group shadow-sm"
+                          >
+                            <span className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center font-bold text-base text-slate-700 group-hover:bg-slate-900 group-hover:text-white transition-colors flex-shrink-0">
+                              {index === 0 ? 'A' : 'B'}
+                            </span>
+                            <div className="flex-grow space-y-1">
+                              <span className="text-base md:text-lg font-bold text-slate-900 transition-colors block">
+                                {choice.text}
+                              </span>
+                              <div className="flex gap-4 text-xs font-extrabold pt-1">
+                                {choice.effect.health !== 0 && (
+                                  <span className={choice.effect.health > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                    생존 {choice.effect.health > 0 ? `+${choice.effect.health}` : choice.effect.health}%
+                                  </span>
+                                )}
+                                {choice.effect.capital !== 0 && (
+                                  <span className={choice.effect.capital > 0 ? 'text-amber-600' : 'text-amber-800'}>
+                                    자산 {choice.effect.capital > 0 ? `+${choice.effect.capital}` : choice.effect.capital}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* Feedback overlay popup */}
+            {feedback.show && character && (
+              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 z-50 animate-fade-in">
+                <div className="max-w-md w-full glass-panel p-8 rounded-3xl border border-slate-200 text-center space-y-6 shadow-2xl">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-3xl">
+                    💡
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">선택 결과 리포트</span>
+                    <p className="text-lg font-extrabold text-slate-900 italic">"{feedback.choiceText}"</p>
+                  </div>
+
+                  <p className="text-base text-slate-700 leading-relaxed p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                    {feedback.resultText}
+                  </p>
+
+                  <div className="flex justify-center gap-8 py-2">
+                    {feedback.effects && (
+                      <>
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500 font-extrabold mb-1">❤️ 생존력 변화</p>
+                          <p className={`text-xl font-black ${feedback.effects.health >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {feedback.effects.health >= 0 ? `+${feedback.effects.health}` : feedback.effects.health}%
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500 font-extrabold mb-1">💰 자산 변화</p>
+                          <p className={`text-xl font-black ${feedback.effects.capital >= 0 ? 'text-emerald-600' : 'text-amber-700'}`}>
+                            {feedback.effects.capital >= 0 ? `+${feedback.effects.capital}` : feedback.effects.capital}%
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      onClick={() => setFeedback({ show: false, choiceText: '', resultText: '', effects: null })}
+                      className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl transition-all border border-slate-300/50 shadow-sm"
+                    >
+                      다시 선택하기
+                    </button>
+                    <button
+                      onClick={handleConfirmFeedback}
+                      className={`w-full py-4 rounded-xl font-extrabold transition-all duration-300 ${character.themeConfig.buttonActive} shadow-lg`}
+                    >
+                      다음 단계로
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Screen: RESULT & INFOGRAPHICS */}
+            {screen === 'result' && character && (
+              <div className="flex-grow flex flex-col items-center p-6 md:p-12 z-10 fade-in-up">
+                <div className="max-w-4xl w-full space-y-12">
+                  
+                  {/* Result Message Card */}
+                  <div className="glass-panel p-8 md:p-12 rounded-3xl text-center space-y-6 relative overflow-hidden border border-slate-200 shadow-md">
+                    {isSuccess && <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 pointer-events-none" />}
+                    {isGameOver && <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-rose-500/5 pointer-events-none" />}
+
+                    <span className="text-4xl md:text-6xl block">
+                      {isSuccess ? '🎉' : '💀'}
+                    </span>
+                    
+                    <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900">
+                      {isSuccess ? '탈출에 성공하셨습니다!' : '게임 오버 (Game Over)'}
+                    </h2>
+
+                    <p className="text-base md:text-lg text-slate-700 max-w-xl mx-auto leading-relaxed">
+                      {isSuccess 
+                        ? `비록 가혹한 기후 재난으로 정든 터전을 떠나 전 재산을 탕진하는 뼈아픈 이주를 경험했지만, ${character.name} 님과 가족들은 모진 생존 경쟁 속에서 겨우 살아남아 새로운 터전을 모색하기 시작했습니다.`
+                        : `극심한 생존력 저하와 식수/식량의 고갈, 혹은 대피 중 발생한 부상을 견디지 못하고 ${character.name} 님과 가족은 생존에 실패했습니다. 기후 난민들이 매일 마주하는 혹독한 기후 파국의 참혹한 현실입니다.`}
+                    </p>
+
+                    <div className="flex justify-center gap-6 pt-2">
+                      <div className="bg-slate-50 border border-slate-200 px-8 py-4 rounded-2xl shadow-sm">
+                        <span className="text-xs text-slate-500 font-extrabold block">최종 생존력</span>
+                        <span className={`text-2xl font-black ${isSuccess ? 'text-emerald-600' : 'text-red-600'}`}>{stats.health}%</span>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 px-8 py-4 rounded-2xl shadow-sm">
+                        <span className="text-xs text-slate-500 font-extrabold block">최종 자산율</span>
+                        <span className="text-2xl font-black text-amber-600">{stats.capital}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Infographic Section */}
+                  <div className="glass-panel p-6 md:p-10 rounded-3xl space-y-8 border border-slate-200 shadow-sm">
+                    <div className="text-center space-y-2">
+                      <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200">
+                        INFOGRAPHIC: CLIMATE INEQUALITY
+                      </span>
+                      <h3 className="text-3xl font-black text-slate-900">원인 제공자와 가해지는 피해의 불일치</h3>
+                      <p className="text-sm text-slate-500 max-w-xl mx-auto">
+                        기후 위기를 유발한 온실가스는 선진국에서 대량 배출했지만, 그 피해는 탄소를 거의 배출하지 않은 국가의 빈곤층에게 가장 먼저 덮칩니다.
+                      </p>
+                    </div>
+
+                    <div className="space-y-6 max-w-2xl mx-auto">
+                      <h4 className="text-base font-bold text-slate-600 text-center">
+                        국가별 1인당 연간 온실가스 탄소 배출량 비교 (단위: 톤, Co2e)
+                      </h4>
+                      
+                      <div className="space-y-5 pt-4">
+                        {/* USA */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-extrabold">
+                            <span className="text-slate-600">🇺🇸 미국 (USA)</span>
+                            <span className="text-red-600 text-sm">14.9 톤</span>
+                          </div>
+                          <div className="h-8 bg-slate-200/80 rounded-lg overflow-hidden border border-slate-300">
+                            <div className="h-full bg-gradient-to-r from-red-500 to-rose-500 chart-bar w-[100%]" style={{ animationDelay: '0.1s' }} />
+                          </div>
+                        </div>
+
+                        {/* South Korea */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-extrabold">
+                            <span className="text-slate-600">🇰🇷 대한민국 (South Korea)</span>
+                            <span className="text-orange-600 text-sm">11.8 톤</span>
+                          </div>
+                          <div className="h-8 bg-slate-200/80 rounded-lg overflow-hidden border border-slate-300">
+                            <div className="h-full bg-gradient-to-r from-orange-500 to-amber-500 chart-bar w-[79.2%]" style={{ animationDelay: '0.3s' }} />
+                          </div>
+                        </div>
+
+                        {/* Tuvalu */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-extrabold">
+                            <span className="text-slate-600">🇹🇻 투발루 (Tuvalu - 타네의 고향)</span>
+                            <span className="text-cyan-700 text-sm">0.9 톤</span>
+                          </div>
+                          <div className="h-8 bg-slate-200/80 rounded-lg overflow-hidden border border-slate-300">
+                            <div className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 chart-bar w-[6%]" style={{ animationDelay: '0.5s' }} />
+                          </div>
+                        </div>
+
+                        {/* Bangladesh */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-extrabold">
+                            <span className="text-slate-600">🇧🇩 방글라데시 (Bangladesh - 파티마의 고향)</span>
+                            <span className="text-emerald-700 text-sm">0.6 톤</span>
+                          </div>
+                          <div className="h-8 bg-slate-200/80 rounded-lg overflow-hidden border border-slate-300">
+                            <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 chart-bar w-[4%]" style={{ animationDelay: '0.6s' }} />
+                          </div>
+                        </div>
+
+                        {/* Ethiopia */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs font-extrabold">
+                            <span className="text-slate-600">🇪🇹 에티오피아 (Ethiopia - 아베베의 고향)</span>
+                            <span className="text-emerald-700 text-sm">0.1 톤</span>
+                          </div>
+                          <div className="h-8 bg-slate-200/80 rounded-lg overflow-hidden border border-slate-300">
+                            <div className="h-full bg-gradient-to-r from-emerald-600 to-teal-500 chart-bar w-[1%]" style={{ animationDelay: '0.7s' }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-slate-400 text-center pt-2">
+                        *출처: 세계은행(World Bank) 및 WRI 탄소 발자국 데이터 리포트
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KOICA projects Section */}
+                  <div className="glass-panel p-6 md:p-10 rounded-3xl space-y-8 border border-slate-200 shadow-sm">
+                    <div className="text-center space-y-2">
+                      <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-200">
+                        KOICA ODA PROJECT
+                      </span>
+                      <h3 className="text-2xl md:text-4xl font-black text-slate-900">대한민국 KOICA의 기후 ODA 대응 사업</h3>
+                      <p className="text-sm md:text-base text-slate-500 max-w-xl mx-auto">
+                        대한민국 정부는 KOICA(한국국제협력단)를 통해 개발도상국의 기후 복원력을 증진하고 기후 불평등을 해결하기 위해 인도적 원조 사업을 적극적으로 수행하고 있습니다.
+                      </p>
+                    </div>
+
+                    <div className="max-w-2xl mx-auto">
+                      <div className="p-6 md:p-8 rounded-2xl bg-emerald-50/50 border border-emerald-200 flex flex-col justify-between shadow-sm space-y-5">
+                        <div className="space-y-3">
+                          <span className="text-xs md:text-sm font-extrabold text-emerald-700 uppercase tracking-wider block text-center">🌍 KOICA ODA 지원 사업</span>
+                          <h4 className="text-lg md:text-2xl font-black text-emerald-950 leading-snug text-center">
+                            {character.endingKOICA.projectName}
+                          </h4>
+                          <p className="text-base md:text-lg text-slate-700 leading-relaxed font-medium text-center">
+                            {character.endingKOICA.description}
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-emerald-200/60 mt-4">
+                          <span className="text-xs md:text-sm font-extrabold text-emerald-800 flex items-center gap-1.5">
+                            💡 {character.name} 님과 같은 기후 난민을 위한 기후 정의(Climate Justice) 동참
+                          </span>
+                          <a 
+                            href={character.endingKOICA.linkUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow transition-all duration-300 hover:scale-105 flex items-center gap-1.5 min-w-[220px] justify-center"
+                          >
+                            <span>KOICA 기후 ODA 사업 자세히 보기</span>
+                            <span>➔</span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pledge Action Section */}
+                  <div className="glass-panel p-6 md:p-10 rounded-3xl space-y-8 border border-slate-200 shadow-sm relative">
+                    <div className="text-center space-y-2">
+                      <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-200">
+                        CLIMATE ACTION PLEDGE
+                      </span>
+                      <h3 className="text-3xl font-black text-slate-900">나의 지구촌 기후 행동 서약서</h3>
+                      <p className="text-sm text-slate-500 max-w-xl mx-auto">
+                        기후 위기는 우리의 작은 생활 습관 변화에서 시작될 수 있습니다. 오늘부터 실천할 나만의 약속을 작성하고 디지털 서약서를 발급받으세요.
+                      </p>
+                    </div>
+
+                    {!showCertificate ? (
+                      <form onSubmit={handleCompletePledge} className="max-w-xl mx-auto space-y-6">
+                        <div className="space-y-2">
+                          <label className="block text-xs font-extrabold text-slate-500 uppercase">서약자 이름</label>
+                          <input 
+                            type="text"
+                            value={userName}
+                            onChange={(e) => setUserName(e.target.value)}
+                            placeholder="실명을 입력하세요"
+                            className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-950 focus:outline-none focus:border-emerald-500 text-base shadow-sm font-semibold"
+                            maxLength={15}
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="block text-xs font-extrabold text-slate-500 uppercase mb-2">실천할 기후 행동 약속 (중복 선택 가능)</label>
+                          
+                          {pledgeOptions.map((option, idx) => {
+                            const isSelected = pledges.includes(option);
+                            return (
+                              <div 
+                                key={idx}
+                                onClick={() => handleTogglePledge(option)}
+                                className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 flex items-center gap-3 ${
+                                  isSelected 
+                                    ? 'bg-emerald-50 border-emerald-400 text-emerald-950 font-bold' 
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className={`w-5 h-5 rounded flex items-center justify-center border text-xs ${
+                                  isSelected ? 'bg-emerald-500 border-emerald-400 text-white' : 'border-slate-300 bg-white'
+                                }`}>
+                                  {isSelected ? '✓' : ''}
+                                </div>
+                                <span className="text-sm md:text-base">{option}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold rounded-xl shadow-md hover:opacity-90 transition-all text-base"
+                        >
+                          서약서 발급받기
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="max-w-xl mx-auto p-6 md:p-10 rounded-2xl bg-white text-slate-900 border-8 border-double border-emerald-700 relative shadow-2xl space-y-6 fade-in-up">
+                        <div className="absolute right-6 top-6 w-24 h-24 rounded-full border-4 border-dashed border-red-500/70 flex items-center justify-center text-red-500 font-black text-xs tracking-widest stamp-enter rotate-[-15deg] select-none pointer-events-none">
+                          <div className="text-center">
+                            <p className="text-[10px]">CLIMATE</p>
+                            <p className="text-base font-extrabold">기후행동</p>
+                            <p className="text-[9px]">서약필함</p>
+                          </div>
+                        </div>
+
+                        <div className="text-center space-y-2 border-b-2 border-emerald-800/20 pb-4">
+                          <h4 className="text-2xl font-black tracking-widest text-emerald-800">기후 행동 실천 서약서</h4>
+                          <p className="text-[10px] text-slate-500 tracking-wider">PLEDGE OF CLIMATE ACTION & JUSTICE</p>
+                        </div>
+
+                        <div className="space-y-4 py-2">
+                          <p className="text-base leading-relaxed text-slate-700">
+                            서약자 <strong className="text-lg font-black text-slate-950 border-b-2 border-slate-900 px-1">{userName}</strong> 님은 가뭄과 해수면 상승으로 생존권을 위협받는 아프리카 및 태평양 도서국의 기후 난민들의 실상을 목격하고 기후 정의(Climate Justice)에 동참할 것을 엄숙히 다짐하며 다음과 같이 약속합니다.
+                          </p>
+
+                          <div className="space-y-2.5 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                            {pledges.map((pledge, idx) => (
+                              <p key={idx} className="text-sm text-emerald-950 flex items-start gap-2">
+                                <span className="text-emerald-700 font-bold">▪</span> 
+                                <span>{pledge}</span>
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="text-center space-y-1.5 border-t border-slate-200 pt-4">
+                          <p className="text-xs text-slate-500">지구촌 모든 기후 난민들과 함께하는 내일의 한걸음</p>
+                          <p className="text-xs font-bold text-emerald-800">KOICA ODA 캠페인 & 지구촌 방 탈출</p>
+                          <p className="text-[10px] text-slate-400 mt-2">{new Date().toLocaleDateString()} 발급</p>
+                        </div>
+                      </div>
+
+                      {/* SNS Share & Email Sending Area */}
+                      <div className="max-w-xl mx-auto p-6 md:p-8 rounded-3xl bg-slate-50 border border-slate-200 shadow-sm space-y-6 fade-in-up mt-6">
+                        <div className="text-center space-y-1">
+                          <h4 className="text-lg font-bold text-slate-900">✉️ 서약서 공유 및 메일 전송</h4>
+                          <p className="text-xs text-slate-500">서약에 서명한 내역을 SNS에 자랑하고 이메일로 받아보세요.</p>
+                        </div>
+
+                        {/* Social Share Buttons */}
+                        <div className="flex justify-center items-center gap-6 py-2">
+                          {/* Instagram */}
+                          <button
+                            onClick={() => handleShare('인스타그램')}
+                            className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-yellow-500 via-red-500 to-purple-600 text-white flex items-center justify-center shadow hover:scale-110 transition-transform duration-300 relative group"
+                            title="인스타그램 링크 복사"
+                          >
+                            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+                            </svg>
+                            <span className="absolute bottom-[-24px] text-[10px] text-slate-500 font-extrabold opacity-0 group-hover:opacity-100 transition-opacity">Instagram</span>
+                          </button>
+
+                          {/* X */}
+                          <button
+                            onClick={() => handleShare('X(구 트위터)')}
+                            className="w-12 h-12 rounded-2xl bg-black text-white flex items-center justify-center shadow hover:scale-110 transition-transform duration-300 relative group"
+                            title="X 링크 복사"
+                          >
+                            <span className="text-xl font-black font-sans leading-none">X</span>
+                            <span className="absolute bottom-[-24px] text-[10px] text-slate-500 font-extrabold opacity-0 group-hover:opacity-100 transition-opacity">X (Twitter)</span>
+                          </button>
+
+                          {/* KakaoTalk */}
+                          <button
+                            onClick={() => handleShare('카카오톡')}
+                            className="w-12 h-12 rounded-2xl bg-[#fee500] text-[#3c1e1e] flex items-center justify-center shadow hover:scale-110 transition-transform duration-300 relative group"
+                            title="카카오톡 링크 복사"
+                          >
+                            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 3c-5.52 0-10 3.58-10 8 0 2.9 1.92 5.43 4.8 6.85l-.96 3.51c-.08.33.15.64.48.56l4.13-2.73c.51.07 1.03.11 1.55.11 5.52 0 10-3.58 10-8s-4.48-8-10-8z" />
+                            </svg>
+                            <span className="absolute bottom-[-24px] text-[10px] text-slate-500 font-extrabold opacity-0 group-hover:opacity-100 transition-opacity">KakaoTalk</span>
+                          </button>
+                        </div>
+
+                        {/* Email Form */}
+                        <div className="border-t border-slate-200/80 pt-5 space-y-3">
+                          <span className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider">이메일로 서약서 전송받기</span>
+                          
+                          {emailSent ? (
+                            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold text-center">
+                              <div>✅ {submittedEmail} (으)로 기후 서약서 사본이 발송되었습니다!</div>
+                              <div className="text-[10px] text-emerald-700/80 font-normal mt-1 leading-relaxed">
+                                ※ 본 웹사이트는 로컬 데모(프로토타입) 상태로, 이메일 전송은 시뮬레이션으로 처리됩니다. 실제 수신을 위해서는 EmailJS API 연동이 요구됩니다.
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+                                <input 
+                                  type="email"
+                                  required
+                                  value={emailInput}
+                                  onChange={(e) => setEmailInput(e.target.value)}
+                                  placeholder="이메일 주소를 입력하세요"
+                                  className="flex-grow px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:border-emerald-500 text-sm shadow-sm font-semibold"
+                                  disabled={emailSending}
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={emailSending}
+                                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-sm shadow-md transition-all flex items-center gap-2 min-w-[120px] justify-center"
+                                >
+                                  {emailSending ? (
+                                    <>
+                                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                      전송 중...
+                                    </>
+                                  ) : '메일 전송'}
+                                </button>
+                              </form>
+                              <p className="text-[10px] text-slate-400 leading-relaxed">
+                                ※ 이메일 전송은 시뮬레이션 데모 모드입니다. 웹 서버에 배포한 후 이메일 API 서비스(EmailJS 등)를 연결해야 실제 네이버 등으로 메일이 전송됩니다.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  </div>
+
+                  {/* Restart Buttons */}
+                  <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                    <button
+                      onClick={handleRestart}
+                      className="px-8 py-4 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold rounded-xl transition-all text-base shadow-sm"
+                    >
+                      다른 캐릭터로 처음부터 플레이하기
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <footer className="w-full py-6 text-center border-t border-slate-200 text-xs text-slate-500 z-10 glass-panel-light mt-8">
+              <div className="max-w-4xl mx-auto px-4 space-y-1">
+                <p>© 2026 Climate Escape. Created for Climate Inequality Awareness.</p>
+                <p className="text-slate-500">본 웹사이트는 기후 난민의 실상과 KOICA 공적원조(ODA) 사업의 필요성을 교육 목적으로 가공한 가상 인터랙티브 시나리오 게임입니다.</p>
+              </div>
+            </footer>
+
+          </div>
+        );
+      }
+
+      // Mount App using React 18 createRoot UMD syntax
+      const container = document.getElementById('root');
+      const root = createRoot(container);
+      root.render(<App />);
+    })();
+  </script>
+</body>
+</html>
