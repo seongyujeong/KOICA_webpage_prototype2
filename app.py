@@ -37,14 +37,6 @@ st.markdown("""
 # 3. 로컬 파일 로드 (index.html, style.css, gameData.js)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-with open(os.path.join(current_dir, "index.html"), "r", encoding="utf-8") as f:
-    html_content = f.read()
-
-with open(os.path.join(current_dir, "style.css"), "r", encoding="utf-8") as f:
-    css_content = f.read()
-
-with open(os.path.join(current_dir, "gameData.js"), "r", encoding="utf-8") as f:
-    js_content = f.read()
 
 # 4. Streamlit components.html은 iframe에서 실행되므로 외부 파일 연결이 불가능합니다.
 # 따라서 로컬 CSS와 JS 코드를 HTML 파일 안에 동적으로 직접 주입(Inline)합니다.
